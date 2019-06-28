@@ -19,6 +19,13 @@ public class OrderComputor {
 
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+        // 设置时间窗口类型
+        // 1) ProcessingTime 程序处理时间
+        // 2) IngestionTime 数据源进入 flink 的时间
+        // 3) EventTime 数据自带时间戳
+        // env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+
         DataStream<Order> orderStream = env.addSource(new OrderSource());
 
         KeyedStream<Order, String> keyedEdits = orderStream.keyBy(new KeySelector<Order, String>() {
@@ -28,9 +35,9 @@ public class OrderComputor {
             }
         });
 
-        DataStream<Tuple2<String, Double>> result = keyedEdits.
+        DataStream<Tuple2<String, Double>> result = keyedEdits.keyBy("").
         // 统计窗口 5 秒
-                timeWindow(Time.seconds(5))
+                timeWindowAll(Time.seconds(10))
                 // 开始聚合
                 .aggregate(new AggregateFunction<Order, Tuple2<String, Double>, Tuple2<String, Double>>() {
                     @Override
@@ -50,7 +57,7 @@ public class OrderComputor {
 
                     @Override
                     public Tuple2<String, Double> merge(Tuple2<String, Double> a, Tuple2<String, Double> b) {
-                        return new Tuple2<>(a.f0 + b.f0, a.f1 + b.f1);
+                        return null;
                     }
                 });
         result.print();
